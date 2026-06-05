@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "prototypes-19dff"
+  },
+  "targets": {
+    "prototypes-19dff": {
+      "hosting": {
+        "workflow-editor": [
+          "workflow-editor-lexso"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
