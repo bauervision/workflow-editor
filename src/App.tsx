@@ -1,3 +1,4 @@
+//src/App.tsx
 import { type DragEvent, useCallback, useState } from "react";
 import "@xyflow/react/dist/style.css";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -28,6 +29,7 @@ const initialWorkflows: Workflow[] = [
     active: true,
     inputLinks: [],
     outputLinks: [],
+    orInputEvents: [],
     inputEvents: [
       {
         id: "input-1",
@@ -66,19 +68,34 @@ function createBlankWorkflow(): Workflow {
     id,
     name: "New Workflow",
     active: false,
+
     inputEvents: [],
+    orInputEvents: [],
     outputEvents: [],
+
     inputLinks: [],
     outputLinks: [],
   };
 }
 
 function findTemplate(kind: EventKind, templateId: string) {
-  const templates = kind === "input" ? inputTemplates : outputTemplates;
-
+  const templates = kind === "output" ? outputTemplates : inputTemplates;
   return (
     templates.find((template) => template.id === templateId) ?? templates[0]
   );
+}
+
+function getEventKey(kind: EventKind) {
+  switch (kind) {
+    case "input":
+      return "inputEvents";
+
+    case "orInput":
+      return "orInputEvents";
+
+    case "output":
+      return "outputEvents";
+  }
 }
 
 export default function App() {
@@ -94,11 +111,21 @@ export default function App() {
   const detailKind =
     view.name === "input-events"
       ? "input"
-      : view.name === "output-events"
-        ? "output"
-        : null;
+      : view.name === "or-input-events"
+        ? "orInput"
+        : view.name === "output-events"
+          ? "output"
+          : null;
 
-  const templates = detailKind === "input" ? inputTemplates : outputTemplates;
+  const templates = detailKind === "output" ? outputTemplates : inputTemplates;
+
+  const openOrInputEvents = useCallback(() => {
+    if (!selectedWorkflow) {
+      return;
+    }
+
+    setView({ name: "or-input-events", workflowId: selectedWorkflow.id });
+  }, [selectedWorkflow]);
 
   function updateWorkflow(
     workflowId: string,
@@ -130,7 +157,7 @@ export default function App() {
 
   function toggleEvent(kind: EventKind, workflowId: string, eventId: string) {
     updateWorkflow(workflowId, (workflow) => {
-      const key = kind === "input" ? "inputEvents" : "outputEvents";
+      const key = getEventKey(kind);
 
       return {
         ...workflow,
@@ -143,7 +170,7 @@ export default function App() {
 
   function deleteEvent(kind: EventKind, workflowId: string, eventId: string) {
     updateWorkflow(workflowId, (workflow) => {
-      const eventKey = kind === "input" ? "inputEvents" : "outputEvents";
+      const eventKey = getEventKey(kind);
       const linkKey = kind === "input" ? "inputLinks" : "outputLinks";
 
       return {
@@ -166,7 +193,7 @@ export default function App() {
     const id = forcedId ?? `${kind}-${Date.now()}`;
 
     updateWorkflow(workflowId, (workflow) => {
-      const key = kind === "input" ? "inputEvents" : "outputEvents";
+      const key = getEventKey(kind);
 
       return {
         ...workflow,
@@ -192,10 +219,15 @@ export default function App() {
     const templates = kind === "input" ? inputTemplates : outputTemplates;
     const currentEvents =
       kind === "input"
-        ? selectedWorkflow?.inputEvents ?? []
-        : selectedWorkflow?.outputEvents ?? [];
+        ? (selectedWorkflow?.inputEvents ?? [])
+        : kind === "orInput"
+          ? (selectedWorkflow?.orInputEvents ?? [])
+          : (selectedWorkflow?.outputEvents ?? []);
 
-    const nextTemplateIndex = Math.min(currentEvents.length, templates.length - 1);
+    const nextTemplateIndex = Math.min(
+      currentEvents.length,
+      templates.length - 1,
+    );
     const template = templates[nextTemplateIndex];
 
     addEventFromTemplate(kind, workflowId, template, {
@@ -213,7 +245,7 @@ export default function App() {
     const template = findTemplate(kind, templateId);
 
     updateWorkflow(workflowId, (workflow) => {
-      const key = kind === "input" ? "inputEvents" : "outputEvents";
+      const key = getEventKey(kind);
 
       return {
         ...workflow,
@@ -237,7 +269,7 @@ export default function App() {
     updates: { label: string; condition: string; active: boolean },
   ) {
     updateWorkflow(workflowId, (workflow) => {
-      const key = kind === "input" ? "inputEvents" : "outputEvents";
+      const key = getEventKey(kind);
 
       return {
         ...workflow,
@@ -292,7 +324,7 @@ export default function App() {
     operator: ConditionKind,
   ): string {
     const eventId = `${kind}-${Date.now()}`;
-    const eventKey = kind === "input" ? "inputEvents" : "outputEvents";
+    const eventKey = getEventKey(kind);
     const linkKey = kind === "input" ? "inputLinks" : "outputLinks";
 
     updateWorkflow(workflowId, (workflow) => ({
@@ -332,7 +364,7 @@ export default function App() {
     position: { x: number; y: number },
   ) {
     updateWorkflow(workflowId, (workflow) => {
-      const key = kind === "input" ? "inputEvents" : "outputEvents";
+      const key = getEventKey(kind);
 
       return {
         ...workflow,
@@ -354,7 +386,7 @@ export default function App() {
     }
 
     updateWorkflow(workflowId, (workflow) => {
-      const key = kind === "input" ? "inputEvents" : "outputEvents";
+      const key = getEventKey(kind);
       const nextEvents = [...workflow[key]];
       const [movedEvent] = nextEvents.splice(sourceIndex, 1);
 
@@ -377,7 +409,13 @@ export default function App() {
     }
 
     updateWorkflow(selectedWorkflow.id, (workflow) => {
-      const key = detailKind === "input" ? "inputEvents" : "outputEvents";
+      const key =
+        detailKind === "input"
+          ? "inputEvents"
+          : detailKind === "orInput"
+            ? "orInputEvents"
+            : "outputEvents";
+
       const columns = 2;
       const columnGap = 420;
       const rowGap = 150;
@@ -551,6 +589,7 @@ export default function App() {
             onAddLink={addLink}
             onAddConnectedEventFromTemplate={addConnectedEventFromTemplate}
             onUpdateEventPosition={updateEventPosition}
+            onOpenOrInputEvents={openOrInputEvents}
           />
         )}
       </section>

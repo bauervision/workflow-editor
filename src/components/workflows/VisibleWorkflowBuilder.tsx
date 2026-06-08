@@ -1,47 +1,70 @@
+///src/components/workflows/VisibleWorkflowBuilder.tsx
 import { type DragEvent, useState } from "react";
-import { GripVertical, Pencil, Plus, Power, Trash2, X } from "lucide-react";
+import {
+  ArrowRight,
+  GitBranch,
+  GripVertical,
+  Pencil,
+  Plus,
+  Power,
+  Split,
+  Trash2,
+  X,
+} from "lucide-react";
 
 import { inputTemplates, outputTemplates } from "./workflow-templates";
 import type { EventKind, Workflow, WorkflowEvent } from "./workflow-types";
 
+type BuilderEventKind = EventKind | "orInput";
+
 type EditingEvent = {
-  kind: EventKind;
+  kind: BuilderEventKind;
   event: WorkflowEvent;
 };
 
 type ConfirmingDelete = {
-  kind: EventKind;
+  kind: BuilderEventKind;
   eventId: string;
 };
 
 type DraggingRow = {
-  kind: EventKind;
+  kind: BuilderEventKind;
   index: number;
 };
 
 type Props = {
-  workflow: Workflow;
-  onAddVisibleEvent: (kind: EventKind, workflowId: string) => void;
+  workflow: Workflow & {
+    orInputEvents?: WorkflowEvent[];
+  };
+  onAddVisibleEvent: (kind: BuilderEventKind, workflowId: string) => void;
   onUpdateEventTemplate: (
-    kind: EventKind,
+    kind: BuilderEventKind,
     workflowId: string,
     eventId: string,
     templateId: string,
   ) => void;
   onUpdateEventDetails: (
-    kind: EventKind,
+    kind: BuilderEventKind,
     workflowId: string,
     eventId: string,
     updates: { label: string; condition: string; active: boolean },
   ) => void;
   onReorderEvents: (
-    kind: EventKind,
+    kind: BuilderEventKind,
     workflowId: string,
     sourceIndex: number,
     targetIndex: number,
   ) => void;
-  onDeleteEvent: (kind: EventKind, workflowId: string, eventId: string) => void;
-  onToggleEvent: (kind: EventKind, workflowId: string, eventId: string) => void;
+  onDeleteEvent: (
+    kind: BuilderEventKind,
+    workflowId: string,
+    eventId: string,
+  ) => void;
+  onToggleEvent: (
+    kind: BuilderEventKind,
+    workflowId: string,
+    eventId: string,
+  ) => void;
 };
 
 export function VisibleWorkflowBuilder({
@@ -62,7 +85,13 @@ export function VisibleWorkflowBuilder({
   const [draftCondition, setDraftCondition] = useState("");
   const [draftActive, setDraftActive] = useState(true);
 
-  function openEditModal(kind: EventKind, event: WorkflowEvent) {
+  const [outputMode, setOutputMode] = useState<"sequential" | "parallel">(
+    "sequential",
+  );
+
+  const orInputEvents = workflow.orInputEvents ?? [];
+
+  function openEditModal(kind: BuilderEventKind, event: WorkflowEvent) {
     setEditingEvent({ kind, event });
     setDraftLabel(event.label);
     setDraftCondition(event.condition);
@@ -81,18 +110,23 @@ export function VisibleWorkflowBuilder({
       return;
     }
 
-    onUpdateEventDetails(editingEvent.kind, workflow.id, editingEvent.event.id, {
-      label: draftLabel.trim() || editingEvent.event.label,
-      condition: draftCondition.trim() || editingEvent.event.condition,
-      active: draftActive,
-    });
+    onUpdateEventDetails(
+      editingEvent.kind,
+      workflow.id,
+      editingEvent.event.id,
+      {
+        label: draftLabel.trim() || editingEvent.event.label,
+        condition: draftCondition.trim() || editingEvent.event.condition,
+        active: draftActive,
+      },
+    );
 
     closeEditModal();
   }
 
   function beginRowDrag(
     event: DragEvent<HTMLButtonElement>,
-    kind: EventKind,
+    kind: BuilderEventKind,
     index: number,
   ) {
     setDraggingRow({ kind, index });
@@ -105,7 +139,7 @@ export function VisibleWorkflowBuilder({
 
   function allowRowDrop(
     event: DragEvent<HTMLDivElement>,
-    kind: EventKind,
+    kind: BuilderEventKind,
     index: number,
   ) {
     event.preventDefault();
@@ -118,7 +152,7 @@ export function VisibleWorkflowBuilder({
 
   function dropRow(
     event: DragEvent<HTMLDivElement>,
-    targetKind: EventKind,
+    targetKind: BuilderEventKind,
     targetIndex: number,
   ) {
     event.preventDefault();
@@ -142,7 +176,7 @@ export function VisibleWorkflowBuilder({
     setDropTarget(null);
   }
 
-  function confirmDelete(kind: EventKind, eventId: string) {
+  function confirmDelete(kind: BuilderEventKind, eventId: string) {
     setConfirmingDelete({ kind, eventId });
   }
 
@@ -150,17 +184,23 @@ export function VisibleWorkflowBuilder({
     setConfirmingDelete(null);
   }
 
-  function completeDelete(kind: EventKind, eventId: string) {
+  function completeDelete(kind: BuilderEventKind, eventId: string) {
     onDeleteEvent(kind, workflow.id, eventId);
     setConfirmingDelete(null);
   }
 
-  function isConfirmingDelete(kind: EventKind, eventId: string) {
-    return confirmingDelete?.kind === kind && confirmingDelete.eventId === eventId;
+  function isConfirmingDelete(kind: BuilderEventKind, eventId: string) {
+    return (
+      confirmingDelete?.kind === kind && confirmingDelete.eventId === eventId
+    );
   }
 
-  function renderRows(kind: EventKind, events: WorkflowEvent[]) {
-    const templates = kind === "input" ? inputTemplates : outputTemplates;
+  function getTemplates(kind: BuilderEventKind) {
+    return kind === "output" ? outputTemplates : inputTemplates;
+  }
+
+  function renderRows(kind: BuilderEventKind, events: WorkflowEvent[]) {
+    const templates = getTemplates(kind);
 
     return events.map((event, index) => {
       const confirming = isConfirmingDelete(kind, event.id);
@@ -187,8 +227,11 @@ export function VisibleWorkflowBuilder({
           }}
           onDrop={(dropEvent) => dropRow(dropEvent, kind, index)}
         >
-          <span className="builder-row__index">{index + 1})</span>
-
+          {kind === "output" && outputMode === "parallel" ? (
+            <ArrowRight size={13} />
+          ) : (
+            `${index + 1})`
+          )}
           <select
             value={event.templateId}
             onChange={(changeEvent) =>
@@ -208,7 +251,9 @@ export function VisibleWorkflowBuilder({
           </select>
 
           <button
-            className={event.active ? "icon-button icon-button--active" : "icon-button"}
+            className={
+              event.active ? "icon-button icon-button--active" : "icon-button"
+            }
             type="button"
             onClick={() => onToggleEvent(kind, workflow.id, event.id)}
             aria-label={event.active ? "Disable item" : "Enable item"}
@@ -301,6 +346,30 @@ export function VisibleWorkflowBuilder({
           <Plus size={14} />
           Add Event
         </button>
+
+        <div className="builder-or-section">
+          <div className="builder-or-section__divider" />
+
+          <div className="builder-rule">
+            <span className="builder-rule__pill builder-rule__pill--or">
+              OR
+            </span>
+            <span>Any listed event may also trigger</span>
+          </div>
+
+          <div className="builder-list">
+            {renderRows("orInput", orInputEvents)}
+          </div>
+
+          <button
+            className="builder-add-button"
+            type="button"
+            onClick={() => onAddVisibleEvent("orInput", workflow.id)}
+          >
+            <Plus size={14} />
+            Add OR Event
+          </button>
+        </div>
       </section>
 
       <div className="builder-connector">
@@ -327,16 +396,47 @@ export function VisibleWorkflowBuilder({
           {renderRows("output", workflow.outputEvents)}
         </div>
 
-        <button
-          className="builder-add-button"
-          type="button"
-          onClick={() => onAddVisibleEvent("output", workflow.id)}
-        >
-          <Plus size={14} />
-          Add Action
-        </button>
+        <div className="builder-output-footer">
+          <button
+            className="builder-add-button"
+            type="button"
+            onClick={() => onAddVisibleEvent("output", workflow.id)}
+          >
+            <Plus size={14} />
+            Add Action
+          </button>
 
-        <p className="builder-card__footnote">Sequential</p>
+          <div className="builder-mode-row">
+            <div
+              className="builder-mode-toggle"
+              aria-label="Output action mode"
+            >
+              <button
+                className={
+                  outputMode === "sequential"
+                    ? "builder-mode-toggle__button builder-mode-toggle__button--active"
+                    : "builder-mode-toggle__button"
+                }
+                type="button"
+                onClick={() => setOutputMode("sequential")}
+              >
+                Sequential
+              </button>
+
+              <button
+                className={
+                  outputMode === "parallel"
+                    ? "builder-mode-toggle__button builder-mode-toggle__button--active"
+                    : "builder-mode-toggle__button"
+                }
+                type="button"
+                onClick={() => setOutputMode("parallel")}
+              >
+                Parallel
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       {editingEvent ? (
@@ -350,7 +450,7 @@ export function VisibleWorkflowBuilder({
             <div className="event-modal__header">
               <div>
                 <p className="eyebrow">
-                  Edit {editingEvent.kind === "input" ? "Event" : "Action"}
+                  Edit {editingEvent.kind === "output" ? "Action" : "Event"}
                 </p>
                 <h2>{editingEvent.event.label}</h2>
               </div>

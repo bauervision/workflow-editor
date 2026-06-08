@@ -1,3 +1,4 @@
+//src/components/workflows/NodeFlowWorkflowEditor.tsx
 import {
   type DragEvent,
   type MouseEvent as ReactMouseEvent,
@@ -70,6 +71,8 @@ type Props = {
     eventId: string,
     position: { x: number; y: number },
   ) => void;
+
+  onOpenOrInputEvents: () => void;
 };
 
 type PendingConnection = {
@@ -189,6 +192,7 @@ export function NodeFlowWorkflowEditor({
   onAddLink,
   onAddConnectedEventFromTemplate,
   onUpdateEventPosition,
+  onOpenOrInputEvents,
 }: Props) {
   const [flowInstance, setFlowInstance] = useState<ReactFlowInstance | null>(
     null,
@@ -200,6 +204,8 @@ export function NodeFlowWorkflowEditor({
   const [pendingPaneAdd, setPendingPaneAdd] = useState<PendingPaneAdd | null>(
     null,
   );
+
+  const orInputEvents = workflow.orInputEvents ?? [];
 
   function onCanvasDrop(event: DragEvent<HTMLElement>) {
     event.preventDefault();
@@ -361,20 +367,31 @@ export function NodeFlowWorkflowEditor({
   const overviewFlow = useMemo(() => {
     const nodes: Node<SummaryNodeData>[] = [
       {
-        id: "inputs",
+        id: "and-inputs",
         type: "summary",
-        position: { x: 120, y: 180 },
+        position: { x: 120, y: 90 },
         data: {
-          title: `Inputs (${workflow.inputEvents.length})`,
-          subtitle: "Click to edit input events",
+          title: `AND Inputs (${workflow.inputEvents.length})`,
+          subtitle: "All listed input events must be true",
           accent: "input",
           onOpen: onOpenInputEvents,
         },
       },
       {
+        id: "or-inputs",
+        type: "summary",
+        position: { x: 120, y: 330 },
+        data: {
+          title: `OR Inputs (${orInputEvents.length})`,
+          subtitle: "Any listed input event may trigger",
+          accent: "input",
+          onOpen: onOpenOrInputEvents,
+        },
+      },
+      {
         id: "outputs",
         type: "summary",
-        position: { x: 560, y: 180 },
+        position: { x: 620, y: 210 },
         data: {
           title: `Outputs (${workflow.outputEvents.length})`,
           subtitle: "Click to edit output actions",
@@ -386,8 +403,15 @@ export function NodeFlowWorkflowEditor({
 
     const edges: Edge[] = [
       {
-        id: "inputs-to-outputs",
-        source: "inputs",
+        id: "and-inputs-to-outputs",
+        source: "and-inputs",
+        target: "outputs",
+        markerEnd: { type: MarkerType.ArrowClosed },
+        style: { strokeWidth: 3 },
+      },
+      {
+        id: "or-inputs-to-outputs",
+        source: "or-inputs",
         target: "outputs",
         markerEnd: { type: MarkerType.ArrowClosed },
         style: { strokeWidth: 3 },
@@ -398,6 +422,7 @@ export function NodeFlowWorkflowEditor({
   }, [
     onOpenInputEvents,
     onOpenOutputEvents,
+    orInputEvents.length,
     workflow.inputEvents.length,
     workflow.outputEvents.length,
   ]);
@@ -408,9 +433,14 @@ export function NodeFlowWorkflowEditor({
     }
 
     const events =
-      detailKind === "input" ? workflow.inputEvents : workflow.outputEvents;
+      detailKind === "input"
+        ? workflow.inputEvents
+        : detailKind === "orInput"
+          ? orInputEvents
+          : workflow.outputEvents;
+
     const links =
-      detailKind === "input" ? workflow.inputLinks : workflow.outputLinks;
+      detailKind === "output" ? workflow.outputLinks : workflow.inputLinks;
 
     const nodes: Node<EventNodeData>[] = events.map((event) => ({
       id: event.id,
@@ -437,6 +467,7 @@ export function NodeFlowWorkflowEditor({
     detailKind,
     onDeleteEvent,
     onToggleEvent,
+    orInputEvents,
     workflow.id,
     workflow.inputEvents,
     workflow.inputLinks,
@@ -544,7 +575,7 @@ export function NodeFlowWorkflowEditor({
         >
           <div className="event-picker__title">
             Add{" "}
-            {pendingPaneAdd.kind === "input" ? "input event" : "output action"}
+            {pendingPaneAdd.kind === "output" ? "output action" : "input event"}
           </div>
 
           <input

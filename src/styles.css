@@ -682,6 +682,12 @@ h1 {
   cursor: pointer;
 }
 
+.builder-or-section {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
 .builder-connector {
   position: relative;
   height: 2px;
@@ -848,4 +854,56 @@ h1 {
 .builder-row--drop-target {
   border-radius: 12px;
   background: rgba(34, 211, 238, 0.08);
+}
+
+.builder-mode-toggle {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.38);
+}
+
+.builder-mode-toggle__button {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: #94a3b8;
+  background: transparent;
+  font-size: 12px;
+}
+
+.builder-mode-toggle__button--active {
+  color: #67e8f9;
+  background: rgba(8, 145, 178, 0.22);
+}
+
+.builder-mode-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.builder-mode-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.38);
+}
+
+.builder-output-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.builder-output-footer .builder-add-button,
+.builder-output-footer .builder-mode-row {
+  margin-top: 0;
 }
