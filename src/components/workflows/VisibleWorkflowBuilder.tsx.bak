@@ -48,17 +48,10 @@ function getConfiguredItems(condition: string) {
 
 function getConfiguredActionItems(event: WorkflowEvent) {
   if (
-    event.templateId !== "display-monitor" &&
     event.templateId !== "send-email" &&
     event.templateId !== "send-sms" &&
-    event.templateId !== "send-text" &&
-    event.templateId !== "send-call" &&
-    event.templateId !== "send-alert" &&
     event.templateId !== "move-camera" &&
     event.templateId !== "move-ptz-camera" &&
-    event.templateId !== "go-to-preset" &&
-    event.templateId !== "move-coordinates" &&
-    event.templateId !== "move-smart-target" &&
     event.templateId !== "start-recording"
   ) {
     return [];
@@ -82,22 +75,13 @@ function getConfiguredActionIcon(event: WorkflowEvent) {
     return <MailCheck size={12} />;
   }
 
-  if (
-    event.templateId === "send-sms" ||
-    event.templateId === "send-text" ||
-    event.templateId === "send-call" ||
-    event.templateId === "send-alert"
-  ) {
+  if (event.templateId === "send-sms") {
     return <MessageSquareText size={12} />;
   }
 
   if (
-    event.templateId === "display-monitor" ||
     event.templateId === "move-camera" ||
-    event.templateId === "move-ptz-camera" ||
-    event.templateId === "go-to-preset" ||
-    event.templateId === "move-coordinates" ||
-    event.templateId === "move-smart-target"
+    event.templateId === "move-ptz-camera"
   ) {
     return <Camera size={12} />;
   }
@@ -547,7 +531,7 @@ export function VisibleWorkflowBuilder({
           draftCondition={draftCondition}
           draftActive={draftActive}
           availableRecordingCameras={getMoveCameraItems(workflow.outputEvents)}
-          onDraftLabelChange={setDraftLabel}
+    onDraftLabelChange={setDraftLabel}
           onDraftConditionChange={setDraftCondition}
           onDraftActiveChange={setDraftActive}
           onClose={closeEditModal}

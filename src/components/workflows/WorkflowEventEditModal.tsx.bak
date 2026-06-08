@@ -1,0 +1,418 @@
+import { useState } from "react";
+import { Plus, X } from "lucide-react";
+import type { WorkflowEvent } from "./workflow-types";
+
+type Props = {
+  kind: "input" | "orInput" | "output";
+  event: WorkflowEvent;
+  draftLabel: string;
+  draftCondition: string;
+  draftActive: boolean;
+  availableRecordingCameras?: string[];
+  onDraftLabelChange: (value: string) => void;
+  onDraftConditionChange: (value: string) => void;
+  onDraftActiveChange: (value: boolean) => void;
+  onClose: () => void;
+  onSave: () => void;
+};
+
+const CAMERA_PLACEHOLDER = "Select camera to add to action";
+
+const cameraOptions = [
+  "Gate 1 PTZ camera",
+  "Gate 2 PTZ camera",
+  "Warehouse entrance camera",
+  "Perimeter east camera",
+  "Loading dock camera",
+];
+
+function formatUsPhoneNumber(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+
+  if (digits.length <= 3) {
+    return digits;
+  }
+
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+const EMPTY_RECORDING_SELECTION = "__none__";
+
+function parseItems(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(
+      (item) =>
+        item &&
+        item !== EMPTY_RECORDING_SELECTION &&
+        !item.toLowerCase().startsWith("single active"),
+    );
+}
+
+export function WorkflowEventEditModal({
+  kind,
+  event,
+  draftLabel,
+  draftCondition,
+  draftActive,
+  availableRecordingCameras = [],
+  onDraftLabelChange,
+  onDraftConditionChange,
+  onDraftActiveChange,
+  onClose,
+  onSave,
+}: Props) {
+  const [newItem, setNewItem] = useState("");
+  const [selectedCamera, setSelectedCamera] = useState(CAMERA_PLACEHOLDER);
+  const [confirmingCameraRemoval, setConfirmingCameraRemoval] = useState<
+    string | null
+  >(null);
+
+  const isSendEmail = event.templateId === "send-email";
+  const isSendSms = event.templateId === "send-sms";
+  const isMoveCamera =
+    event.templateId === "move-camera" ||
+    event.templateId === "move-ptz-camera";
+  const isStartRecording = event.templateId === "start-recording";
+
+  const selectedItems = parseItems(draftCondition);
+  const recordingItems =
+    isStartRecording && draftCondition.trim() === EMPTY_RECORDING_SELECTION
+      ? []
+      : isStartRecording && selectedItems.length === 0
+        ? availableRecordingCameras
+        : selectedItems;
+
+  const modalTitle = isMoveCamera ? "Move Camera" : event.label;
+
+  function addItem(value?: string) {
+    const nextItem = (value ?? newItem).trim();
+
+    if (
+      !nextItem ||
+      nextItem === CAMERA_PLACEHOLDER ||
+      selectedItems.includes(nextItem)
+    ) {
+      setNewItem("");
+      return;
+    }
+
+    onDraftConditionChange(
+      [
+        ...(isStartRecording ? recordingItems : selectedItems),
+        nextItem,
+      ].join(", "),
+    );
+    setNewItem("");
+    setSelectedCamera(CAMERA_PLACEHOLDER);
+  }
+
+  function removeItem(item: string) {
+    onDraftConditionChange(
+      selectedItems.filter((selectedItem) => selectedItem !== item).join(", "),
+    );
+  }
+
+  function toggleRecordingCamera(camera: string) {
+    const nextItems = recordingItems.includes(camera)
+      ? recordingItems.filter((item) => item !== camera)
+      : [...recordingItems, camera];
+
+    onDraftConditionChange(nextItems.join(", "));
+  }
+
+  function removeRecordingCamera(camera: string) {
+    const nextItems = recordingItems.filter((item) => item !== camera);
+
+    onDraftConditionChange(
+      nextItems.length > 0 ? nextItems.join(", ") : EMPTY_RECORDING_SELECTION,
+    );
+    setConfirmingCameraRemoval(null);
+  }
+
+  function renderItemPills(emptyLabel: string) {
+    return (
+      <div className="event-modal__pills">
+        {selectedItems.length > 0 ? (
+          selectedItems.map((item) => (
+            <span className="event-modal__pill" key={item}>
+              {item}
+              <button
+                type="button"
+                aria-label={`Remove ${item}`}
+                onClick={() => removeItem(item)}
+              >
+                <X size={12} />
+              </button>
+            </span>
+          ))
+        ) : (
+          <span className="event-modal__empty-pill">{emptyLabel}</span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="event-modal-backdrop" role="presentation">
+      <section
+        className="event-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Edit workflow event"
+      >
+        <div className="event-modal__header">
+          <div>
+            <p className="eyebrow">
+              Edit {kind === "output" ? "Action" : "Event"}
+            </p>
+            <h2>{modalTitle}</h2>
+          </div>
+
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Close edit modal"
+            onClick={onClose}
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        <label className="event-modal__field">
+          <span>Display label</span>
+          <input
+            value={draftLabel}
+            onChange={(changeEvent) =>
+              onDraftLabelChange(changeEvent.target.value)
+            }
+            placeholder="Enter display label"
+          />
+        </label>
+
+        {isSendEmail ? (
+          <>
+            <div className="event-modal__field">
+              <span>Email recipients</span>
+
+              <div className="event-modal__inline-add">
+                <input
+                  value={newItem}
+                  onChange={(changeEvent) => setNewItem(changeEvent.target.value)}
+                  onKeyDown={(keyEvent) => {
+                    if (keyEvent.key === "Enter") {
+                      keyEvent.preventDefault();
+                      addItem();
+                    }
+                  }}
+                  placeholder="security@lexso.ai"
+                />
+
+                <button type="button" onClick={() => addItem()}>
+                  <Plus size={14} />
+                  Add
+                </button>
+              </div>
+
+              {renderItemPills("No recipients added")}
+            </div>
+
+            <label className="event-modal__field">
+              <span>Email message</span>
+              <textarea
+                placeholder="Person detected near restricted perimeter."
+                rows={4}
+              />
+            </label>
+          </>
+        ) : isSendSms ? (
+          <>
+            <div className="event-modal__field">
+              <span>SMS recipients</span>
+
+              <div className="event-modal__inline-add">
+                <input
+                  value={newItem}
+                  onChange={(changeEvent) =>
+                    setNewItem(formatUsPhoneNumber(changeEvent.target.value))
+                  }
+                  onKeyDown={(keyEvent) => {
+                    if (keyEvent.key === "Enter") {
+                      keyEvent.preventDefault();
+                      addItem();
+                    }
+                  }}
+                  placeholder="757-555-0123"
+                />
+
+                <button type="button" onClick={() => addItem()}>
+                  <Plus size={14} />
+                  Add
+                </button>
+              </div>
+
+              {renderItemPills("No SMS recipients added")}
+            </div>
+
+            <label className="event-modal__field">
+              <span>SMS message</span>
+              <textarea
+                placeholder="Alert: person detected near perimeter."
+                rows={3}
+              />
+            </label>
+          </>
+        ) : isMoveCamera ? (
+          <div className="event-modal__field">
+            <span>Move Cameras</span>
+
+            <div className="event-modal__inline-add">
+              <select
+                value={selectedCamera}
+                onChange={(changeEvent) =>
+                  setSelectedCamera(changeEvent.target.value)
+                }
+              >
+                <option disabled value={CAMERA_PLACEHOLDER}>
+                  {CAMERA_PLACEHOLDER}
+                </option>
+                {cameraOptions.map((camera) => (
+                  <option key={camera} value={camera}>
+                    {camera}
+                  </option>
+                ))}
+              </select>
+
+              <button type="button" onClick={() => addItem(selectedCamera)}>
+                <Plus size={14} />
+                Add
+              </button>
+            </div>
+
+            {renderItemPills("No cameras selected")}
+          </div>
+        ) : isStartRecording ? (
+          <div className="event-modal__field">
+            <span>Record Cameras</span>
+
+            <div className="event-modal__inline-add">
+              <select
+                value={selectedCamera}
+                onChange={(changeEvent) =>
+                  setSelectedCamera(changeEvent.target.value)
+                }
+              >
+                <option disabled value={CAMERA_PLACEHOLDER}>
+                  Select additional camera to record
+                </option>
+                {cameraOptions.map((camera) => (
+                  <option key={camera} value={camera}>
+                    {camera}
+                  </option>
+                ))}
+              </select>
+
+              <button type="button" onClick={() => addItem(selectedCamera)}>
+                <Plus size={14} />
+                Add
+              </button>
+            </div>
+
+            {recordingItems.length > 0 ? (
+              <div className="event-modal__camera-toggle-list">
+                {recordingItems.map((camera) => {
+                  const isRecording = recordingItems.includes(camera);
+
+                  return (
+                    <div className="event-modal__camera-toggle-row" key={camera}>
+                      <button
+                        className={
+                          isRecording
+                            ? "event-modal__camera-toggle event-modal__camera-toggle--active"
+                            : "event-modal__camera-toggle"
+                        }
+                        type="button"
+                        onClick={() => toggleRecordingCamera(camera)}
+                      >
+                        <span>{camera}</span>
+                        <strong>{isRecording ? "Recording" : "Off"}</strong>
+                      </button>
+
+                      {confirmingCameraRemoval === camera ? (
+                        <span className="event-modal__camera-confirm">
+                          <button
+                            type="button"
+                            onClick={() => removeRecordingCamera(camera)}
+                          >
+                            Yes
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmingCameraRemoval(null)}
+                          >
+                            No
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          className="event-modal__camera-remove"
+                          type="button"
+                          aria-label={`Remove ${camera}`}
+                          onClick={() => setConfirmingCameraRemoval(camera)}
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="event-modal__empty-card">
+                Add cameras to record for this action.
+              </div>
+            )}
+          </div>
+        ) : (
+          <label className="event-modal__field">
+            <span>Condition / details</span>
+            <textarea
+              value={draftCondition}
+              onChange={(changeEvent) =>
+                onDraftConditionChange(changeEvent.target.value)
+              }
+              placeholder="Describe when this event is active"
+              rows={4}
+            />
+          </label>
+        )}
+
+        <label className="event-modal__toggle">
+          <input
+            type="checkbox"
+            checked={draftActive}
+            onChange={(changeEvent) =>
+              onDraftActiveChange(changeEvent.target.checked)
+            }
+          />
+          <span>Enabled</span>
+        </label>
+
+        <div className="event-modal__actions">
+          <button className="ghost-button" type="button" onClick={onClose}>
+            Cancel
+          </button>
+
+          <button className="primary-button" type="button" onClick={onSave}>
+            Save Changes
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}

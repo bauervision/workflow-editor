@@ -11,10 +11,58 @@ export const inputTemplates: EventTemplate[] = [
 ];
 
 export const outputTemplates: EventTemplate[] = [
-  { id: "send-sms", label: "Send SMS", description: "Notify a configured phone number.", kind: "output" },
-  { id: "send-email", label: "Send Email", description: "Notify a configured email group.", kind: "output" },
-  { id: "move-camera", label: "Move camera", description: "Move PTZ camera to target.", kind: "output" },
-  { id: "start-recording", label: "Start recording", description: "Record nearby camera feeds.", kind: "output" },
-  { id: "dispatch-patrol", label: "Dispatch patrol", description: "Send response team.", kind: "output" },
-  { id: "trigger-alarm", label: "Trigger alarm", description: "Trigger local alarm or speaker.", kind: "output" },
+  {
+    id: "display-monitor",
+    kind: "output",
+    label: "Display in Monitor",
+    description: "Display one or more cameras in a monitor view.",
+  },
+  {
+    id: "go-to-preset",
+    kind: "output",
+    label: "Go to preset",
+    description: "Move one or more cameras to a saved preset.",
+  },
+  {
+    id: "move-coordinates",
+    kind: "output",
+    label: "Move to coordinates",
+    description: "Move a camera to latitude and longitude coordinates.",
+  },
+  {
+    id: "move-smart-target",
+    kind: "output",
+    label: "Move to smart target",
+    description: "Move a camera to track the detected target.",
+  },
+  {
+    id: "send-email",
+    kind: "output",
+    label: "Send Email",
+    description: "Notify one or more recipients by email.",
+  },
+  {
+    id: "send-text",
+    kind: "output",
+    label: "Send Text",
+    description: "Notify one or more recipients by SMS.",
+  },
+  {
+    id: "send-call",
+    kind: "output",
+    label: "Send Call",
+    description: "Place an automated voice call.",
+  },
+  {
+    id: "send-alert",
+    kind: "output",
+    label: "Push Alert",
+    description: "Send a push alert notification.",
+  },
+  {
+    id: "start-recording",
+    kind: "output",
+    label: "Start recording",
+    description: "Start recording selected cameras.",
+  },
 ];
